@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#17130f">
+  <title>GroundLink ◈ ech0 flight ops</title>
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="noise" aria-hidden="true"></div>
+
+  <div class="page-shell">
+    <header class="topbar">
+      <div class="brand-stack">
+        <a class="wordmark" href="/">ech0 ◈ groundlink</a>
+        <span class="tiny-note">browser-based ground station / cat-certified avionics</span>
+      </div>
+      <div class="top-actions">
+        <button id="theme-button" class="tiny-button" type="button" aria-label="Toggle light and dark theme">☼ LIGHT</button>
+        <button id="luck-button" class="tiny-button luck-button" type="button" title="Statistically irresponsible">TRY YOUR LUCK ◈</button>
+        <div class="topbar-status">
+          <span id="status-dot" class="dot offline"></span>
+          <span id="top-status">SITL OFFLINE</span>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="intro">
+        <div class="eyebrow">ECH0 FLIGHT OPS ◈ LIVE LOG 02</div>
+        <h1>Point somewhere.<br><span>Make tiny guy go there.</span></h1>
+        <div class="intro-row">
+          <p>MAVLink telemetry, waypoint missions, async Rust, WebSockets and one deeply unqualified cat.<br>The blue half stays up. The brown half is where consequences live.</p>
+          <div class="flight-stamp"><span>MISSION CONTROL</span><strong id="mission-stamp">NO CRIMES PLANNED</strong></div>
+        </div>
+      </section>
+
+      <section class="ticker" aria-label="system ticker">
+        <span>◈ click map → waypoint</span><span>◈ blue side up</span><span>◈ brown side down</span><span>◈ upload ≠ arm</span><span>◈ GPS is gossip with coordinates</span>
+      </section>
+
+      <section class="stat-grid" aria-label="Live telemetry summary">
+        <article class="stat-card coral"><span class="index">01</span><span class="label">ALTITUDE</span><strong><span id="altitude">--</span><small> m</small></strong><span class="micro">RELATIVE ALT / UP THERE</span></article>
+        <article class="stat-card mint"><span class="index">02</span><span class="label">BATTERY</span><strong id="battery">--%</strong><span id="voltage" class="micro">-- V / spicy electrons</span></article>
+        <article class="stat-card cream"><span class="index">03</span><span class="label">GPS SATELLITES</span><strong id="gps">--</strong><span class="micro">VISIBLE / SKY FRIENDS</span></article>
+        <article class="stat-card lavender"><span class="index">04</span><span class="label">VEHICLE STATE</span><strong id="armed">DISARMED</strong><span id="mode" class="micro">MODE --</span></article>
+      </section>
+
+      <section class="split-grid">
+        <article class="panel map-panel">
+          <header class="panel-head">
+            <div><span class="label">02 / WHERE IS THE LITTLE GUY</span><h2>Live position + mission canvas</h2></div>
+            <span id="coords" class="tag">NO FIX ◈ VERY MYSTERIOUS</span>
+          </header>
+          <div class="map-toolbar">
+            <button id="plan-toggle" class="tool-button" type="button">＋ DROP WAYPOINTS</button>
+            <button id="sample-route" class="tool-button" type="button">LOAD SILLY TRIANGLE</button>
+            <button id="fit-route" class="tool-button" type="button">FIT ROUTE</button>
+            <span id="planner-hint">planner asleep ◈ map clicks just map</span>
+          </div>
+          <div id="map"></div>
+          <div class="map-caption"><span>MAP FEED</span><span id="map-comment">waiting for coordinates to commit to reality</span></div>
+        </article>
+
+        <article class="panel log-panel">
+          <header class="panel-head">
+            <div><span class="label">03 / MACHINE MUMBLINGS</span><h2>Flight log</h2></div>
+            <button id="clear-log" class="tiny-button" type="button">YEET LOG</button>
+          </header>
+          <div id="event-log" class="event-log" aria-live="polite"></div>
+        </article>
+      </section>
+
+      <section class="ops-grid">
+        <article class="panel attitude-panel">
+          <header class="panel-head">
+            <div><span class="label">04 / BLUE SIDE UP, BROWN SIDE DOWN</span><h2>Artificial horizon</h2></div>
+            <span id="heading-tag" class="tag">HDG ---°</span>
+          </header>
+          <div class="attitude-wrap">
+            <div id="attitude" class="attitude" aria-label="Artificial horizon showing roll and pitch">
+              <div id="horizon-world" class="horizon-world">
+                <div class="sky"><span>SKY ◈ GOOD</span></div>
+                <div class="ground"><span>GROUND ◈ OUCH</span></div>
+                <div class="horizon-line"></div>
+                <div class="pitch-line p20">20</div><div class="pitch-line p10">10</div><div class="pitch-line n10">10</div><div class="pitch-line n20">20</div>
+              </div>
+              <div class="roll-scale" aria-hidden="true"><i class="r60"></i><i class="r30"></i><i class="r0"></i><i class="l30"></i><i class="l60"></i></div>
+              <div class="aircraft-symbol" aria-hidden="true"><span></span><b>◈</b><span></span></div>
+            </div>
+            <div class="attitude-readouts">
+              <div><span>ROLL</span><strong id="roll-value">0.0°</strong></div>
+              <div><span>PITCH</span><strong id="pitch-value">0.0°</strong></div>
+              <div><span>YAW / HDG</span><strong id="yaw-value">0.0°</strong></div>
+            </div>
+            <p class="hud-note">ATTITUDE comes from MAVLink <code>ATTITUDE</code>. Demo mode wiggles it on purpose because staring at a perfectly level HUD is boring.</p>
+          </div>
+        </article>
+
+        <article class="panel mission-panel">
+          <header class="panel-head">
+            <div><span class="label">05 / TELL IT WHERE TO GO</span><h2>Waypoint mission</h2></div>
+            <span id="mission-count" class="tag">0 WAYPOINTS</span>
+          </header>
+          <div class="mission-body">
+            <div class="mission-warning">◈ Upload only writes the mission. GroundLink does <strong>not</strong> arm the aircraft or switch it into AUTO for you.</div>
+            <div id="waypoint-list" class="waypoint-list"><div class="empty-mission">no waypoints yet. activate DROP WAYPOINTS and click the map.</div></div>
+            <div class="mission-actions">
+              <label class="alt-control">NEW WP ALT <input id="default-alt" type="number" min="1" max="500" step="1" value="25"> m</label>
+              <button id="clear-mission" class="tool-button" type="button">CLEAR</button>
+              <button id="upload-mission" class="upload-button" type="button" disabled>UPLOAD TO DRONE ◈</button>
+            </div>
+            <div id="mission-result" class="mission-result" aria-live="polite">mission subsystem ready ◈ waiting for coordinates</div>
+          </div>
+        </article>
+      </section>
+
+      <section class="gremlin-zone">
+        <div class="gremlin-copy">
+          <span class="label">06 / FLIGHT DEPARTMENT (ALLEGEDLY)</span>
+          <h2>ech0 flight ops</h2>
+          <p id="neco-line">burunyuu... awaiting telemetry.</p>
+          <div class="gremlin-actions"><button id="pet-button" class="play-button" type="button">PET CREW MEMBER</button><button id="panic-button" class="play-button danger-button" type="button">PANIK</button><span id="pet-count">pets: 0</span></div>
+        </div>
+        <div id="neco-card" class="neco-card" title="absolutely certified avionics personnel"><img src="/neco-drone.png" alt="Neco-Arc flight ops mascot"><div class="neco-badge">ECH0 AIR OPS / CAT DIVISION</div></div>
+      </section>
+    </main>
+
+    <footer class="statusbar"><span><span id="footer-dot" class="dot offline"></span> <span id="footer-status">SITL source disconnected</span></span><span id="packet-time">FRAME --:--:--</span><span>groundlink v0.2 ◈ waypoint crimes edition</span></footer>
+  </div>
+
+  <div id="luck-modal" class="luck-modal" aria-hidden="true">
+    <div class="luck-backdrop" data-close-luck></div>
+    <div class="luck-window" role="dialog" aria-modal="true" aria-labelledby="luck-title">
+      <button class="luck-close" type="button" data-close-luck>×</button>
+      <div class="luck-kicker">ECH0 LUCK SUBSYSTEM ◈ DO NOT USE IN PRODUCTION</div>
+      <img id="luck-image" src="/neco-drone.png" alt="Neco-Arc reaction">
+      <h2 id="luck-title">consulting the cat...</h2>
+      <p id="luck-message">rolling a completely trustworthy backend dice.</p>
+      <div id="luck-roll" class="luck-roll">ROLLING...</div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
