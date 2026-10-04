@@ -5,6 +5,7 @@ const els = {
   battery: $('battery'), voltage: $('voltage'), gps: $('gps'), armed: $('armed'), mode: $('mode'), coords: $('coords'),
   mapComment: $('map-comment'), eventLog: $('event-log'), clearLog: $('clear-log'), necoLine: $('neco-line'),
   petButton: $('pet-button'), panicButton: $('panic-button'), petCount: $('pet-count'), necoCard: $('neco-card'),
+  hudHeading: $('hud-heading'), hudAltitude: $('hud-altitude'),
   horizonWorld: $('horizon-world'), rollValue: $('roll-value'), pitchValue: $('pitch-value'), yawValue: $('yaw-value'), headingTag: $('heading-tag'),
   planToggle: $('plan-toggle'), sampleRoute: $('sample-route'), fitRoute: $('fit-route'), plannerHint: $('planner-hint'),
   waypointList: $('waypoint-list'), missionCount: $('mission-count'), missionStamp: $('mission-stamp'), defaultAlt: $('default-alt'),
@@ -62,6 +63,8 @@ function formatCoord(value) { return Number(value).toFixed(6); }
 function setTheme(theme) {
   document.documentElement.dataset.theme = theme;
   localStorage.setItem('groundlink-theme', theme);
+  missionLine.setStyle({color:theme === 'dark' ? '#b6ff92' : '#d8e86c'});
+  orbitCircle.setStyle({color:theme === 'dark' ? '#97f8a6' : '#69c9a8'});
   els.themeButton.textContent = theme === 'dark' ? '☼ LIGHT' : '☾ DARK';
   document.querySelector('meta[name="theme-color"]').setAttribute('content', theme === 'dark' ? '#020603' : '#f0e5d2');
 }
@@ -99,11 +102,13 @@ function renderAttitude(t) {
   els.rollValue.textContent = `${roll.toFixed(1)}°`;
   els.pitchValue.textContent = `${pitch.toFixed(1)}°`;
   els.yawValue.textContent = `${yaw.toFixed(1)}°`;
-  els.headingTag.textContent = `HDG ${String(Math.round(yaw)).padStart(3,'0')}°`;
+  els.headingTag.textContent = `HDG ${String(Math.round(yaw) % 360).padStart(3,'0')}°`;
+  els.hudHeading.textContent = String(Math.round(yaw) % 360).padStart(3,'0');
 }
 
 function renderTelemetry(t) {
   els.altitude.textContent = Number(t.alt_m).toFixed(1);
+  els.hudAltitude.textContent = Number(t.alt_m).toFixed(1);
   els.battery.textContent = t.battery_pct == null ? '--%' : `${t.battery_pct}%`;
   els.voltage.textContent = t.voltage_mv == null ? '-- V / spicy electrons' : `${(t.voltage_mv/1000).toFixed(2)} V / spicy electrons`;
   els.gps.textContent = t.gps_sats ?? '--';
@@ -320,5 +325,38 @@ els.petButton.addEventListener('click',()=>{pets++;els.petCount.textContent=`pet
 
 setLinkStatus(false,'sitl'); renderMission(); logEvent('GroundLink v0.2 initialized ◈ waypoint crimes enabled'); connectWebSocket();
 
-// Static CRT layers sleep with the tab; no continuous JavaScript/canvas rendering loop.
+// CSS CRT layers sleep with the tab; dynamic grain uses its own dark-mode lifecycle.
 document.addEventListener('visibilitychange', () => document.documentElement.classList.toggle('crt-paused',document.hidden));
+
+// Port the Den's irregular CRT details; sleep in light mode, hidden tabs, and reduced motion.
+(() => {
+  const canvas=$('crt-static'), flicker=$('crt-flicker'), sync=document.querySelector('.crt-sync');
+  const ctx=canvas.getContext('2d',{alpha:true});
+  if (!ctx) return;
+  const frame=ctx.createImageData(canvas.width,canvas.height);
+  const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+  let timer=null, nextSync=0, syncUntil=0;
+  function enabled() { return document.documentElement.dataset.theme==='dark' && !document.hidden && !reduced.matches; }
+  function tick() {
+    if (!enabled()) { stop(); return; }
+    const pixels=frame.data;
+    for (let i=0;i<pixels.length;i+=4) {
+      const bright=Math.random()>.958;
+      const value=bright ? 95+Math.random()*135 : 0;
+      pixels[i]=value*.55; pixels[i+1]=value; pixels[i+2]=value*.62; pixels[i+3]=bright ? 25+Math.random()*70 : 0;
+    }
+    ctx.putImageData(frame,0,0);
+    const chance=Math.random();
+    flicker.style.opacity=chance>.985 ? .025+Math.random()*.025 : chance>.92 ? .008+Math.random()*.012 : Math.random()*.003;
+    const now=performance.now();
+    if (now>=nextSync) {
+      sync.style.setProperty('--sync-top',`${4+Math.random()*90}vh`);
+      sync.classList.add('active'); syncUntil=now+130; nextSync=now+4500+Math.random()*12000;
+    } else if (now>syncUntil) sync.classList.remove('active');
+    timer=setTimeout(tick,90+Math.random()*100);
+  }
+  function stop() { clearTimeout(timer); timer=null; flicker.style.opacity='0'; sync.classList.remove('active'); }
+  function update() { stop(); if (enabled()) { nextSync=performance.now()+4500; tick(); } }
+  new MutationObserver(update).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+  document.addEventListener('visibilitychange',update); reduced.addEventListener('change',update); update();
+})();

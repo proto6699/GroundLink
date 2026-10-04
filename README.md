@@ -150,7 +150,7 @@ The native demo follows the chosen route speed, holds the last waypoint, and fli
 
 ### Dark mode: the Den has acquired a flight department
 
-Dark mode now uses Neco's green phosphor palette and bundled VT323 font, scanlines, animated static, phosphor mask, glass reflections, raster breathing, and a subtle rolling/sync band. The dashboard layout, map interaction, and light palette stay as they were. Effects pause in background tabs and respect reduced-motion settings. The font's license is included in `static/fonts/`.
+Dark mode now uses Neco's green phosphor palette and bundled VT323 font, scanlines, animated static, phosphor mask, glass reflections, raster breathing, and a subtle rolling/sync band. The dashboard layout, map interaction, and light palette stay as they were. Dark map tiles use monochrome green phosphor grading while markers and controls stay unfiltered. The artificial horizon switches to airline HUD-inspired green symbology on black, with heading and relative-altitude readouts; no flight-path vector is shown because the required velocity data is not available. Pitch ladder spacing uses the same pixels-per-degree calibration as attitude motion. Irregular luminance dips, live low-resolution grain, and occasional sync faults add the Den’s finer CRT details. Effects pause in background tabs and respect reduced-motion settings. The font's license is included in `static/fonts/`.
 
 ---
 

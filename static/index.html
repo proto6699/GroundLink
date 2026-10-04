@@ -16,6 +16,8 @@
   <div class="crt-layer crt-glass" aria-hidden="true"></div>
   <div class="crt-layer crt-roll" aria-hidden="true"></div>
   <div class="crt-layer crt-sync" aria-hidden="true"></div>
+  <canvas id="crt-static" class="crt-layer" width="240" height="144" aria-hidden="true"></canvas>
+  <div id="crt-flicker" class="crt-layer" aria-hidden="true"></div>
 
   <div class="page-shell">
     <header class="topbar">
@@ -91,7 +93,12 @@
                 <div class="sky"><span>SKY ◈ GOOD</span></div>
                 <div class="ground"><span>GROUND ◈ OUCH</span></div>
                 <div class="horizon-line"></div>
-                <div class="pitch-line p20">20</div><div class="pitch-line p10">10</div><div class="pitch-line n10">10</div><div class="pitch-line n20">20</div>
+                <div class="pitch-line p20"><span class="pitch-light-label">20</span><span class="hud-pitch-number hud-pitch-left">20</span><span class="hud-pitch-number hud-pitch-right">20</span></div><div class="pitch-line p10"><span class="pitch-light-label">10</span><span class="hud-pitch-number hud-pitch-left">10</span><span class="hud-pitch-number hud-pitch-right">10</span></div><div class="pitch-line n10"><span class="pitch-light-label">10</span><span class="hud-pitch-number hud-pitch-left">−10</span><span class="hud-pitch-number hud-pitch-right">−10</span></div><div class="pitch-line n20"><span class="pitch-light-label">20</span><span class="hud-pitch-number hud-pitch-left">−20</span><span class="hud-pitch-number hud-pitch-right">−20</span></div>
+              </div>
+              <div class="hud-symbology" aria-hidden="true">
+                <div class="hud-heading">HDG <span id="hud-heading">---</span></div>
+                <div class="hud-altitude"><span>ALT M</span><strong id="hud-altitude">---</strong></div>
+                <div class="hud-reference">ATT / RELATIVE ALT</div>
               </div>
               <div class="roll-scale" aria-hidden="true"><i class="r60"></i><i class="r30"></i><i class="r0"></i><i class="l30"></i><i class="l60"></i></div>
               <div class="aircraft-symbol" aria-hidden="true"><span></span><b>◈</b><span></span></div>
