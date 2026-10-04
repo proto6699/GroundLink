@@ -1,7 +1,10 @@
-use crate::mission::MissionWaypoint;
-use mavlink::dialects::ardupilotmega::{MavModeFlag, MavMessage};
+use crate::mission::{HomePosition, MissionPlan};
+use mavlink::dialects::ardupilotmega::{MavMessage, MavModeFlag};
 use serde::Serialize;
-use std::{f32::consts::PI, time::{SystemTime, UNIX_EPOCH}};
+use std::{
+    f32::consts::PI,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -50,7 +53,8 @@ impl Default for Telemetry {
 pub enum ServerMessage {
     Telemetry { data: Telemetry },
     Status { connected: bool, source: DataSource },
-    Mission { waypoints: Vec<MissionWaypoint> },
+    Mission { plan: MissionPlan },
+    Home { home: Option<HomePosition> },
 }
 
 impl Telemetry {
@@ -65,15 +69,15 @@ impl Telemetry {
                 changed = true;
             }
             MavMessage::SYS_STATUS(data) => {
-                self.voltage_mv = (data.voltage_battery != u16::MAX)
-                    .then_some(data.voltage_battery as u32);
-                self.battery_pct = (data.battery_remaining >= 0)
-                    .then_some(data.battery_remaining as u8);
+                self.voltage_mv =
+                    (data.voltage_battery != u16::MAX).then_some(data.voltage_battery as u32);
+                self.battery_pct =
+                    (data.battery_remaining >= 0).then_some(data.battery_remaining as u8);
                 changed = true;
             }
             MavMessage::GPS_RAW_INT(data) => {
-                self.gps_sats = (data.satellites_visible != u8::MAX)
-                    .then_some(data.satellites_visible);
+                self.gps_sats =
+                    (data.satellites_visible != u8::MAX).then_some(data.satellites_visible);
                 changed = true;
             }
             MavMessage::HEARTBEAT(data) => {

@@ -1,18 +1,15 @@
 use crate::{state::AppState, telemetry::ServerMessage};
 use axum::{
     extract::{
-        ws::{Message, WebSocket, WebSocketUpgrade},
         State,
+        ws::{Message, WebSocket, WebSocketUpgrade},
     },
     response::IntoResponse,
 };
 use tokio::sync::broadcast::error::RecvError;
 use tracing::debug;
 
-pub async fn ws_handler(
-    ws: WebSocketUpgrade,
-    State(state): State<AppState>,
-) -> impl IntoResponse {
+pub async fn ws_handler(ws: WebSocketUpgrade, State(state): State<AppState>) -> impl IntoResponse {
     ws.on_upgrade(move |socket| handle_socket(socket, state))
 }
 
@@ -28,21 +25,18 @@ async fn handle_socket(mut socket: WebSocket, state: AppState) {
         return;
     }
 
+    let mut initial = Vec::new();
     if let Some(latest) = state.latest.read().await.clone() {
-        if send_json(&mut socket, &ServerMessage::Telemetry { data: latest })
-            .await
-            .is_err()
-        {
-            return;
-        }
+        initial.push(ServerMessage::Telemetry { data: latest });
     }
-
-    let mission = state.mission.read().await.clone();
-    if !mission.is_empty() {
-        if send_json(&mut socket, &ServerMessage::Mission { waypoints: mission })
-            .await
-            .is_err()
-        {
+    initial.push(ServerMessage::Home {
+        home: state.home.read().await.clone(),
+    });
+    if let Some(plan) = state.mission.read().await.clone() {
+        initial.push(ServerMessage::Mission { plan });
+    }
+    for message in initial {
+        if send_json(&mut socket, &message).await.is_err() {
             return;
         }
     }
@@ -76,5 +70,8 @@ async fn handle_socket(mut socket: WebSocket, state: AppState) {
 
 async fn send_json(socket: &mut WebSocket, message: &ServerMessage) -> Result<(), ()> {
     let json = serde_json::to_string(message).map_err(|_| ())?;
-    socket.send(Message::Text(json.into())).await.map_err(|_| ())
+    socket
+        .send(Message::Text(json.into()))
+        .await
+        .map_err(|_| ())
 }

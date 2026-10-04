@@ -8,6 +8,8 @@ const els = {
   horizonWorld: $('horizon-world'), rollValue: $('roll-value'), pitchValue: $('pitch-value'), yawValue: $('yaw-value'), headingTag: $('heading-tag'),
   planToggle: $('plan-toggle'), sampleRoute: $('sample-route'), fitRoute: $('fit-route'), plannerHint: $('planner-hint'),
   waypointList: $('waypoint-list'), missionCount: $('mission-count'), missionStamp: $('mission-stamp'), defaultAlt: $('default-alt'),
+  missionSpeed: $('mission-speed'), orbitSpeed: $('orbit-speed'), orbitDiameter: $('orbit-diameter'), orbitAlt: $('orbit-alt'),
+  uploadOrbit: $('upload-orbit'), homePosition: $('home-position'),
   clearMission: $('clear-mission'), uploadMission: $('upload-mission'), missionResult: $('mission-result'),
   luckModal: $('luck-modal'), luckImage: $('luck-image'), luckTitle: $('luck-title'), luckMessage: $('luck-message'), luckRoll: $('luck-roll'),
 };
@@ -21,6 +23,10 @@ let waypoints = [];
 let missionMarkers = [];
 let currentSource = 'sitl';
 let latestPosition = null;
+let homePosition = null;
+let vehicleConnected = false;
+let uploading = false;
+let loadedOrbit = null;
 
 const map = L.map('map', { zoomControl: true }).setView([24.7136, 46.6753], 15);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -35,6 +41,9 @@ const necoIcon = L.divIcon({
 });
 const droneMarker = L.marker([24.7136, 46.6753], { icon: necoIcon, zIndexOffset: 1000 }).addTo(map);
 const missionLine = L.polyline([], { color: '#d8e86c', weight: 3, opacity: .9, dashArray: '8 6' }).addTo(map);
+
+const homeMarker = L.marker([24.7136,46.6753], { icon:L.divIcon({className:'',html:'<div class="home-map-marker">H</div>',iconSize:[26,26],iconAnchor:[13,13]}) });
+const orbitCircle = L.circle([24.7136,46.6753], {radius:30,color:'#69c9a8',weight:2,fillOpacity:.08,dashArray:'5 5'});
 
 const necoQuips = [
   'burunyuu... packets acquired.', 'GPS says the drone exists. promising.', 'rust thread status: emotionally asynchronous.',
@@ -54,7 +63,7 @@ function setTheme(theme) {
   document.documentElement.dataset.theme = theme;
   localStorage.setItem('groundlink-theme', theme);
   els.themeButton.textContent = theme === 'dark' ? '☼ LIGHT' : '☾ DARK';
-  document.querySelector('meta[name="theme-color"]').setAttribute('content', theme === 'dark' ? '#17130f' : '#f0e5d2');
+  document.querySelector('meta[name="theme-color"]').setAttribute('content', theme === 'dark' ? '#020603' : '#f0e5d2');
 }
 const savedTheme = localStorage.getItem('groundlink-theme');
 setTheme(savedTheme || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'));
@@ -62,6 +71,8 @@ els.themeButton.addEventListener('click', () => setTheme(document.documentElemen
 
 function setLinkStatus(connected, source = 'sitl') {
   currentSource = source;
+  vehicleConnected = connected;
+  updateUploadButtons();
   for (const dot of [els.statusDot, els.footerDot]) {
     dot.classList.toggle('online', connected); dot.classList.toggle('offline', !connected);
   }
@@ -123,6 +134,7 @@ function renderTelemetry(t) {
   }
   if (Math.random() < .012) els.necoLine.textContent = randomFrom(necoQuips);
   previous = t;
+  updateUploadButtons();
 }
 
 function waypointIcon(index) {
@@ -141,7 +153,7 @@ function renderMission() {
   missionLine.setLatLngs(latlngs);
   els.missionCount.textContent = `${waypoints.length} WAYPOINT${waypoints.length === 1 ? '' : 'S'}`;
   els.missionStamp.textContent = waypoints.length ? `${waypoints.length} LITTLE DESTINATION${waypoints.length === 1 ? '' : 'S'}` : 'NO CRIMES PLANNED';
-  els.uploadMission.disabled = waypoints.length === 0;
+  updateUploadButtons();
 
   if (!waypoints.length) {
     els.waypointList.innerHTML = '<div class="empty-mission">no waypoints yet. activate DROP WAYPOINTS and click the map.</div>';
@@ -194,29 +206,81 @@ els.sampleRoute.addEventListener('click', () => {
 function fitMission() {
   const points = waypoints.map(wp => [wp.lat,wp.lon]);
   if (latestPosition) points.push(latestPosition);
+  if (homePosition) points.push([homePosition.lat,homePosition.lon]);
+  if (orbitCircle && map.hasLayer(orbitCircle)) points.push(...[orbitCircle.getBounds().getNorthEast(),orbitCircle.getBounds().getSouthWest()]);
   if (points.length) map.fitBounds(L.latLngBounds(points).pad(.18), {maxZoom:18});
 }
 els.fitRoute.addEventListener('click', fitMission);
 els.clearMission.addEventListener('click', () => { waypoints=[]; renderMission(); els.missionResult.className='mission-result'; els.missionResult.textContent='mission cleared locally ◈ vehicle mission unchanged until next upload'; logEvent('local waypoint plan cleared'); });
 
-els.uploadMission.addEventListener('click', async () => {
-  if (!waypoints.length) return;
-  els.uploadMission.disabled = true; els.uploadMission.textContent = 'UPLOADING...';
-  els.missionResult.className = 'mission-result'; els.missionResult.textContent = currentSource === 'demo' ? 'feeding route to demo goblin...' : 'negotiating MAVLink mission protocol with ArduPilot...';
+function updateUploadButtons() {
+  els.uploadMission.disabled = uploading || !vehicleConnected || !homePosition || !waypoints.length;
+  els.uploadOrbit.disabled = uploading || !vehicleConnected || !homePosition || (currentSource !== 'demo' && previous?.armed);
+}
+
+function renderHome(home) {
+  homePosition = home;
+  els.homePosition.textContent = home ? `HOME: ${formatCoord(home.lat)}, ${formatCoord(home.lon)}` : 'HOME: waiting for vehicle';
+  if (home) homeMarker.setLatLng([home.lat,home.lon]).addTo(map).bindTooltip('Vehicle home');
+  else if (map.hasLayer(homeMarker)) map.removeLayer(homeMarker);
+  renderOrbit(); updateUploadButtons();
+}
+
+function renderOrbit() {
+  const centre = loadedOrbit?.home || homePosition;
+  const diameter = loadedOrbit?.orbit.diameter_m || Number(els.orbitDiameter.value);
+  if (!centre || !Number.isFinite(diameter) || diameter < 10) {
+    if (map.hasLayer(orbitCircle)) map.removeLayer(orbitCircle);
+    return;
+  }
+  orbitCircle.setLatLng([centre.lat,centre.lon]).setRadius(diameter/2).addTo(map);
+  orbitCircle.bindTooltip(`${loadedOrbit ? 'Uploaded' : 'Preview'} home orbit ◈ ${diameter} m diameter`);
+}
+els.orbitDiameter.addEventListener('input', () => { loadedOrbit=null; renderOrbit(); });
+
+function readSetting(input, label) {
+  if (!input.checkValidity() || !Number.isFinite(Number(input.value))) throw new Error(`Check ${label}: ${input.validationMessage || 'invalid number'}`);
+  return Number(input.value);
+}
+
+async function uploadPlan(kind) {
+  if (uploading) return;
+  let payload;
   try {
-    const response = await fetch('/api/mission', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({waypoints}) });
-    const result = await response.json();
+    payload = kind === 'orbit' ? {kind,waypoints:[],speed_m_s:readSetting(els.orbitSpeed,'orbit speed'),orbit:{
+      diameter_m:readSetting(els.orbitDiameter,'diameter'),alt_m:readSetting(els.orbitAlt,'orbit altitude')}} :
+      {kind,waypoints:waypoints.map(wp => ({...wp})),speed_m_s:readSetting(els.missionSpeed,'route speed')};
+    if (!homePosition || !vehicleConnected) throw new Error('Wait for connected vehicle home before uploading');
+    uploading=true; updateUploadButtons();
+    els.missionResult.className='mission-result';
+    els.missionResult.textContent=currentSource === 'demo' ? 'feeding flight plan to demo goblin...' : 'negotiating flight plan with ArduPilot...';
+    const response=await fetch('/api/mission',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const result=await response.json();
     if (!response.ok || !result.ok) throw new Error(result.error || `HTTP ${response.status}`);
     els.missionResult.className='mission-result success'; els.missionResult.textContent=`✓ ${result.message}`;
-    logEvent(`mission upload accepted ◈ ${result.count} waypoint(s)`, 'nominal');
-    els.necoLine.textContent = currentSource === 'demo' ? 'route acquired. deploying cat toward coordinates.' : 'ArduPilot accepted the mission. do not forget: upload is not arm.';
+    logEvent(`${kind === 'orbit' ? 'home orbit' : 'waypoint mission'} accepted ◈ ${payload.speed_m_s} m/s`,'nominal');
+    els.necoLine.textContent=currentSource === 'demo' ? 'flight plan acquired. deploying cat toward coordinates.' : 'ArduPilot accepted the plan. arm and select AUTO when ready.';
   } catch (error) {
     els.missionResult.className='mission-result error'; els.missionResult.textContent=`✕ ${error.message}`;
-    logEvent(`mission upload failed ◈ ${error.message}`, 'danger');
-  } finally {
-    els.uploadMission.disabled = waypoints.length === 0; els.uploadMission.textContent='UPLOAD TO DRONE ◈';
+    logEvent(`upload failed ◈ ${error.message}`,'danger');
+  } finally { uploading=false; updateUploadButtons(); }
+}
+els.uploadMission.addEventListener('click', () => uploadPlan('waypoints'));
+els.uploadOrbit.addEventListener('click', () => uploadPlan('orbit'));
+
+function renderUploadedPlan(plan) {
+  if (plan.kind === 'orbit') {
+    loadedOrbit=plan;
+    els.orbitSpeed.value=plan.speed_m_s; els.orbitDiameter.value=plan.orbit.diameter_m; els.orbitAlt.value=plan.orbit.alt_m;
+    // Keep the locally drawn waypoint route available for the next upload.
+    els.missionStamp.textContent=`HOME ORBIT / ${plan.speed_m_s} M/S`;
+    renderOrbit();
+  } else {
+    loadedOrbit=null; waypoints=plan.waypoints.map(wp => ({...wp})); els.missionSpeed.value=plan.speed_m_s;
+    renderMission();
+    if (map.hasLayer(orbitCircle)) map.removeLayer(orbitCircle);
   }
-});
+}
 
 function connectWebSocket() {
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
@@ -229,7 +293,8 @@ function connectWebSocket() {
         setLinkStatus(message.connected, message.source);
         logEvent(message.connected ? `${message.source} source acquired ◈ tasty packets` : `${message.source} source lost ◈ where drone`, message.connected ? 'nominal' : 'warning');
       } else if (message.type === 'telemetry') renderTelemetry(message.data);
-      else if (message.type === 'mission') { waypoints = message.waypoints.map(wp => ({...wp})); renderMission(); }
+      else if (message.type === 'mission') renderUploadedPlan(message.plan);
+      else if (message.type === 'home') renderHome(message.home);
     } catch (error) { console.error(error); logEvent('frame parse error ◈ JSON committed a crime','danger'); }
   });
   ws.addEventListener('close', () => { setLinkStatus(false,currentSource); logEvent('websocket disconnected; retrying because giving up is cringe','warning'); clearTimeout(reconnectTimer); reconnectTimer=setTimeout(connectWebSocket,1500); });
@@ -254,3 +319,6 @@ els.panicButton.addEventListener('click',()=>{document.body.classList.remove('pa
 els.petButton.addEventListener('click',()=>{pets++;els.petCount.textContent=`pets: ${pets}`;els.necoCard.classList.remove('bonk');void els.necoCard.offsetWidth;els.necoCard.classList.add('bonk');els.necoLine.textContent=randomFrom(['burunyuu +1','avionics morale increased by 0.3%','crew member appeased','pet registered in volatile memory','flight safety unchanged, vibes improved']);setTimeout(()=>els.necoCard.classList.remove('bonk'),750);});
 
 setLinkStatus(false,'sitl'); renderMission(); logEvent('GroundLink v0.2 initialized ◈ waypoint crimes enabled'); connectWebSocket();
+
+// Static CRT layers sleep with the tab; no continuous JavaScript/canvas rendering loop.
+document.addEventListener('visibilitychange', () => document.documentElement.classList.toggle('crt-paused',document.hidden));

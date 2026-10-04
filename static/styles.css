@@ -36,3 +36,76 @@ main { padding:72px 0 36px; }.intro { padding-bottom:42px; }.intro h1 { margin:1
 @keyframes bonk{0%{transform:rotate(0) scale(1)}50%{transform:rotate(-8deg) scale(1.08)}100%{transform:rotate(5deg) scale(.98)}}@keyframes doomed{50%{transform:translate(3px,-2px) rotate(.8deg)}}@keyframes panik{0%{transform:translate(0,0)}50%{transform:translate(4px,-2px)}100%{transform:translate(-3px,2px)}}body.panik{animation:panik .09s steps(2) 8}
 @media(max-width:1050px){.ops-grid{grid-template-columns:1fr}.split-grid{grid-template-columns:1fr}.event-log{height:390px}.stat-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:720px){.page-shell{width:min(100% - 22px,1480px)}main{padding-top:42px}.tiny-note,.topbar-status{display:none}.intro-row{display:block}.flight-stamp{margin-top:22px}.stat-grid{grid-template-columns:1fr}.panel-head{align-items:flex-start}.tag{max-width:46%}#map{height:420px}.ops-grid{display:block}.attitude-wrap{padding:14px}.waypoint-row{grid-template-columns:38px minmax(0,1fr) 92px 34px}.mission-actions{align-items:stretch}.upload-button{margin-left:0;width:100%}.gremlin-zone{grid-template-columns:1fr}.neco-card{border-left:0;border-top:1px solid #ad5f40;min-height:230px}.neco-card img{width:auto;max-height:230px}.statusbar{flex-wrap:wrap;padding:14px 0}.map-toolbar span{width:100%;margin-left:0}.topbar{padding:10px 0}}
+
+/* Flight controls share the existing mission desk; light mode keeps its original palette. */
+.orbit-controls { margin-top:18px; padding-top:16px; border-top:1px solid var(--line); }
+.orbit-controls h3 { margin:0 0 10px; font-size:15px; font-weight:500; }
+.home-position { color:var(--mint); font-size:10px; line-height:1.5; overflow-wrap:anywhere; }
+.home-map-marker { display:grid; place-items:center; width:26px; height:26px; border:2px solid var(--mint); background:var(--bg); color:var(--mint); font-size:12px; font-weight:700; }
+
+/* The Den's phosphor terminal, scoped to dark mode. No layout or pointer-coordinate transforms. */
+@font-face { font-family:"VT323"; src:url('/fonts/VT323-Regular.ttf') format('truetype'); font-style:normal; font-weight:400; font-display:swap; }
+html[data-theme="dark"] {
+  --bg:#020603; --bg-2:#060e08; --bg-3:#0b190e; --paper:#d5ffd9; --paper-2:#a6d9af;
+  --text:#97f8a6; --muted:#7da487; --line:#2b5334; --ink:#020603;
+  --coral:#97f8a6; --mint:#97f8a6; --acid:#c8ffb2; --lavender:#8fe0d2;
+  --amber:#efc879; --danger:#ff8a83; --map-filter:saturate(.4) brightness(.72) contrast(1.12); --noise-opacity:.045;
+}
+html[data-theme="dark"] body { font-family:"VT323", "DejaVu Sans Mono", monospace; }
+/* VT323 has smaller glyphs: scale text for legibility without scaling the interface. */
+html[data-theme="dark"] :is(.tiny-note,.micro,.label,.eyebrow,.topbar-status,.tiny-button,.tool-button,.play-button,.upload-button,.tag,.map-toolbar span,.map-caption,.statusbar,.alt-control,.attitude-readouts span,.neco-badge,.luck-kicker,.luck-roll) { font-size:13px; letter-spacing:.07em; }
+html[data-theme="dark"] :is(.mission-warning,.empty-mission,.waypoint-row,.mission-result,.hud-note,.home-position,.pitch-line,.sky,.ground) { font-size:15px; }
+html[data-theme="dark"] :is(.log-row,.intro-row p,.gremlin-copy p,.luck-window p) { font-size:17px; }
+html[data-theme="dark"] :is(.orbit-controls h3,.wordmark) { font-size:23px; }
+html[data-theme="dark"] :is(h1,h2,.stat-card strong) {
+  text-shadow:0 0 9px rgba(151,248,166,.20), .55px 0 rgba(255,80,110,.20), -.55px 0 rgba(60,220,210,.22);
+}
+html[data-theme="dark"] :is(.panel,.stat-card,.flight-stamp) { box-shadow:inset 0 0 22px rgba(151,248,166,.025); }
+html[data-theme="dark"] .gremlin-zone { background:var(--bg-2); color:var(--text); }
+html[data-theme="dark"] :is(.gremlin-copy .label,.gremlin-copy p,#pet-count) { color:var(--muted); }
+html[data-theme="dark"] .gremlin-actions .play-button { color:var(--text); border-color:var(--line); }
+html[data-theme="dark"] .gremlin-actions .play-button:hover { color:var(--ink); background:var(--paper); border-color:var(--paper); }
+html[data-theme="dark"] .neco-card { background:#254831; border-color:var(--line); }
+html[data-theme="dark"] .neco-card img { mix-blend-mode:normal; }
+html[data-theme="dark"] .neco-badge { background:var(--bg); color:var(--text); }
+html[data-theme="dark"] .luck-window { background:var(--bg-2); color:var(--text); border-color:var(--line); box-shadow:8px 8px 0 #254831; }
+html[data-theme="dark"] .luck-window img { background:var(--bg-3); border-color:var(--line); }
+html[data-theme="dark"] .luck-close { color:var(--text); }
+html[data-theme="dark"] .luck-roll { border-color:var(--line); }
+html[data-theme="dark"] ::selection { background:#98ffaa; color:#001b06; text-shadow:none; }
+.crt-layer { display:none; position:fixed; inset:0; pointer-events:none; z-index:9990; }
+html[data-theme="dark"] .crt-layer { display:block; }
+html[data-theme="dark"] .noise { mix-blend-mode:screen; background-size:180px 180px; animation:gl-static .4s steps(6,end) infinite; }
+.crt-scanlines {
+  background:repeating-linear-gradient(to bottom,transparent 0 2px,rgba(0,0,0,.14) 2px 4px);
+  opacity:.46; animation:gl-scan .18s steps(2,end) infinite, gl-luma 7.1s ease-in-out infinite;
+}
+.crt-phosphor {
+  background:repeating-linear-gradient(90deg,rgba(150,255,165,.022) 0 1px,rgba(60,220,210,.012) 1px 2px,rgba(0,0,0,.035) 2px 3px);
+  mix-blend-mode:screen; opacity:.6;
+}
+.crt-glass {
+  background:linear-gradient(118deg,transparent 34%,rgba(213,255,217,.028) 47%,transparent 60%),radial-gradient(ellipse 80% 55% at 48% 35%,rgba(151,248,166,.035),transparent 70%);
+  animation:gl-glass-breathe 8s ease-in-out infinite; transform-origin:center;
+}
+.crt-roll { inset:-18vh 0 auto; height:12vh; background:linear-gradient(transparent,rgba(140,255,155,.045),transparent); animation:gl-roll 11s linear infinite; }
+.crt-sync { opacity:0; background:linear-gradient(transparent 49.8%,rgba(180,255,185,.10) 50%,transparent 50.4%); animation:gl-sync 17s steps(1,end) infinite; }
+@keyframes gl-static { to { background-position:-180px 90px; } }
+@keyframes gl-scan { to { background-position:0 2px; } }
+@keyframes gl-luma { 0%,100% { opacity:.46; } 50% { opacity:.40; } }
+@keyframes gl-glass-breathe { 0%,100% { transform:scale(1.006,1.012); opacity:.85; } 50% { transform:scale(1.010,1.016); opacity:1; } }
+@keyframes gl-roll { 0% { transform:translateY(0); } 20%,100% { transform:translateY(126vh); } }
+@keyframes gl-sync { 0%,98%,100% { opacity:0; transform:translateX(0); } 98.4% { opacity:.45; transform:translateX(1px); } 98.7% { opacity:.22; transform:translateX(-1px); } }
+@media(max-width:720px) {
+  html[data-theme="dark"] .crt-scanlines { opacity:.30; }
+  html[data-theme="dark"] .noise { opacity:.03; }
+  html[data-theme="dark"] .crt-sync { animation:none; }
+  html[data-theme="dark"] .waypoint-row { grid-template-columns:32px minmax(0,1fr) 83px 32px; gap:5px; }
+  html[data-theme="dark"] .wp-alt input { width:55px; }
+}
+/* Stop decorative motion when the OS requests it or the tab is in the background. */
+html.crt-paused[data-theme="dark"] :is(.noise,.crt-layer) { animation-play-state:paused; }
+@media(prefers-reduced-motion:reduce) {
+  html[data-theme="dark"] :is(.noise,.crt-layer) { animation:none; }
+  html[data-theme="dark"] :is(.crt-roll,.crt-sync) { display:none; }
+}

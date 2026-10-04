@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#17130f">
+  <meta name="theme-color" content="#020603">
   <title>GroundLink ◈ ech0 flight ops</title>
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -11,6 +11,11 @@
 </head>
 <body>
   <div class="noise" aria-hidden="true"></div>
+  <div class="crt-layer crt-scanlines" aria-hidden="true"></div>
+  <div class="crt-layer crt-phosphor" aria-hidden="true"></div>
+  <div class="crt-layer crt-glass" aria-hidden="true"></div>
+  <div class="crt-layer crt-roll" aria-hidden="true"></div>
+  <div class="crt-layer crt-sync" aria-hidden="true"></div>
 
   <div class="page-shell">
     <header class="topbar">
@@ -109,9 +114,21 @@
             <div class="mission-warning">◈ Upload only writes the mission. GroundLink does <strong>not</strong> arm the aircraft or switch it into AUTO for you.</div>
             <div id="waypoint-list" class="waypoint-list"><div class="empty-mission">no waypoints yet. activate DROP WAYPOINTS and click the map.</div></div>
             <div class="mission-actions">
+              <label class="alt-control">ROUTE SPEED <input id="mission-speed" type="number" min="0.5" max="20" step="0.5" value="5"> m/s</label>
               <label class="alt-control">NEW WP ALT <input id="default-alt" type="number" min="1" max="500" step="1" value="25"> m</label>
               <button id="clear-mission" class="tool-button" type="button">CLEAR</button>
               <button id="upload-mission" class="upload-button" type="button" disabled>UPLOAD TO DRONE ◈</button>
+            </div>
+            <div class="orbit-controls">
+              <h3>Home loiter <span class="micro">/ circular orbit</span></h3>
+              <p id="home-position" class="home-position">HOME: waiting for vehicle</p>
+              <div class="mission-actions">
+                <label class="alt-control">SPEED <input id="orbit-speed" type="number" min="0.5" max="20" step="0.5" value="3"> m/s</label>
+                <label class="alt-control">DIAMETER <input id="orbit-diameter" type="number" min="10" max="500" step="2" value="60"> m</label>
+                <label class="alt-control">ALT <input id="orbit-alt" type="number" min="1" max="500" step="1" value="25"> m</label>
+                <button id="upload-orbit" class="upload-button" type="button" disabled>UPLOAD HOME ORBIT ◈</button>
+              </div>
+              <p class="hud-note">Clockwise around vehicle home, at altitude above home. Upload replaces the vehicle mission and configures circle speed (disarm first). Select AUTO to fly; select RTL or another mode to exit the repeating orbit.</p>
             </div>
             <div id="mission-result" class="mission-result" aria-live="polite">mission subsystem ready ◈ waiting for coordinates</div>
           </div>

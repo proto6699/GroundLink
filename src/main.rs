@@ -6,10 +6,18 @@ mod state;
 mod telemetry;
 mod ws;
 
-use axum::{Json, Router, routing::{get, post}};
+use axum::{
+    Json, Router,
+    routing::{get, post},
+};
 use serde_json::{Value, json};
 use state::AppState;
-use std::{env, net::SocketAddr, path::PathBuf, time::{SystemTime, UNIX_EPOCH}};
+use std::{
+    env,
+    net::SocketAddr,
+    path::PathBuf,
+    time::{SystemTime, UNIX_EPOCH},
+};
 use telemetry::DataSource;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 use tracing::info;
@@ -25,7 +33,11 @@ async fn main() {
         .init();
 
     let demo_mode = env::args().any(|arg| arg == "--demo");
-    let source = if demo_mode { DataSource::Demo } else { DataSource::Sitl };
+    let source = if demo_mode {
+        DataSource::Demo
+    } else {
+        DataSource::Sitl
+    };
     let state = AppState::new(256, source);
 
     if demo_mode {
@@ -46,7 +58,12 @@ async fn main() {
         .layer(TraceLayer::new_for_http())
         .with_state(state);
 
-    let address = SocketAddr::from(([127, 0, 0, 1], 3000));
+    let port = env::var("GROUNDLINK_PORT")
+        .unwrap_or_else(|_| "3001".into())
+        .parse::<u16>()
+        .expect("GROUNDLINK_PORT must be a port number (1–65535)");
+    assert!(port > 0, "GROUNDLINK_PORT must be 1–65535");
+    let address = SocketAddr::from(([127, 0, 0, 1], port));
     let listener = tokio::net::TcpListener::bind(address)
         .await
         .expect("failed to bind GroundLink HTTP server");
