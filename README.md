@@ -154,6 +154,18 @@ Dark mode now uses Neco's green phosphor palette and bundled VT323 font, scanlin
 
 ---
 
+## Sweep (roomba mode)
+
+Tucked into a folded drawer under the map, so it stays out of the way until you want it. Click **draw**, drop points around the area like waypoints, pick a lane width, and GroundLink lays out back-and-forth lanes (red, and Neco eats them as the drone flies them).
+
+Before launch it asks for battery capacity, remaining percent, average current and a reserve, fills in what it can read (the vehicle's `BATT_CAPACITY` over MAVLink, the demo's simulated pack), and does the maths. Every field can be overridden by hand. The log says `roomba time` when you launch.
+
+During the flight GroundLink watches progress and battery. If the remaining sweep plus the trip home no longer fits in what's left, it switches the vehicle to RTL once. This is a ground-station safety net, not a replacement for the autopilot's own battery failsafe: set `BATT_FS_LOW_ACT` on the vehicle (Sweep reads it and warns, but never writes it).
+
+Honest limits: only tested against the built-in demo vehicle and unit tests. Not tried on real ArduPilot or SITL, and not flown. The estimate is a simple model (average current over estimated time), so treat "tight" as tight. Sorties are not split yet, and there is no resume after a battery swap.
+
+Turn it off entirely with `GROUNDLINK_SWEEP=0`.
+
 # Running GroundLink
 
 ## Requirements
@@ -289,6 +301,8 @@ GroundLink is a **prototype under active development**.
 - [x] Mission speed controls
 - [x] Home orbit planning
 - [x] CRT dark theme and independent HTTP port
+- [x] Sweep planner and battery estimate (demo and unit tests only)
+- [ ] Sweep on real ArduPilot / SITL
 - [ ] Real ArduPilot flight controller testing
 - [ ] Telemetry radio testing
 - [ ] Actual flight testing

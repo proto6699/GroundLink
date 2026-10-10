@@ -1,4 +1,7 @@
-use crate::mission::{HomePosition, MissionPlan};
+use crate::{
+    mission::{HomePosition, MissionPlan},
+    sweep::{SweepPlan, SweepProgress},
+};
 use mavlink::dialects::ardupilotmega::{MavMessage, MavModeFlag};
 use serde::Serialize;
 use std::{
@@ -21,6 +24,8 @@ pub struct Telemetry {
     pub alt_m: f32,
     pub battery_pct: Option<u8>,
     pub voltage_mv: Option<u32>,
+    /// Battery current in amps, when the vehicle measures it.
+    pub current_a: Option<f32>,
     pub gps_sats: Option<u8>,
     pub armed: bool,
     pub flight_mode: String,
@@ -38,6 +43,7 @@ impl Default for Telemetry {
             alt_m: 0.0,
             battery_pct: None,
             voltage_mv: None,
+            current_a: None,
             gps_sats: None,
             armed: false,
             flight_mode: "UNKNOWN".to_string(),
@@ -55,6 +61,10 @@ pub enum ServerMessage {
     Status { connected: bool, source: DataSource },
     Mission { plan: MissionPlan },
     Home { home: Option<HomePosition> },
+    /// Sweep: the loaded survey plan, or `None` once it is cleared or replaced.
+    Sweep { plan: Option<SweepPlan> },
+    SweepProgress { progress: SweepProgress },
+    SweepNote { level: String, message: String },
 }
 
 impl Telemetry {
@@ -73,6 +83,9 @@ impl Telemetry {
                     (data.voltage_battery != u16::MAX).then_some(data.voltage_battery as u32);
                 self.battery_pct =
                     (data.battery_remaining >= 0).then_some(data.battery_remaining as u8);
+                // Reported in units of 10 mA; -1 means the vehicle does not measure it.
+                self.current_a =
+                    (data.current_battery >= 0).then_some(data.current_battery as f32 / 100.0);
                 changed = true;
             }
             MavMessage::GPS_RAW_INT(data) => {

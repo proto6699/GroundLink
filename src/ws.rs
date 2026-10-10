@@ -35,6 +35,12 @@ async fn handle_socket(mut socket: WebSocket, state: AppState) {
     if let Some(plan) = state.mission.read().await.clone() {
         initial.push(ServerMessage::Mission { plan });
     }
+    if let Some(plan) = state.sweep.read().await.clone() {
+        initial.push(ServerMessage::Sweep { plan: Some(plan) });
+        if let Some(progress) = state.sweep_progress.read().await.clone() {
+            initial.push(ServerMessage::SweepProgress { progress });
+        }
+    }
     for message in initial {
         if send_json(&mut socket, &message).await.is_err() {
             return;

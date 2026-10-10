@@ -1,0 +1,88 @@
+/* Sweep ◈ roomba mode. Self-contained: it only adds to the map panel and reuses the existing
+   palette variables, so the rest of the dashboard looks exactly as it did. */
+:root { --sweep: #ff4a3d; --sweep-dim: #7f6a66; }
+
+.sweep-drawer { border-top:1px solid var(--line); background:var(--bg-2); }
+.sweep-drawer[hidden] { display:none; }
+.sweep-drawer > summary { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; cursor:pointer; list-style:none; user-select:none; font-size:10px; letter-spacing:.09em; text-transform:uppercase; color:var(--paper-2); }
+.sweep-drawer > summary::-webkit-details-marker { display:none; }
+.sweep-drawer > summary:hover { color:var(--paper); }
+.sweep-title em { font-style:normal; color:var(--sweep); }
+.sweep-drawer[open] > summary { border-bottom:1px solid var(--line); background:var(--bg-3); }
+.sweep-badge { max-width:60%; }
+.sweep-badge.active { border-color:var(--sweep); color:var(--sweep); }
+
+.sweep-body { padding:16px 18px 18px; }
+.sweep-step { padding:14px 0; border-top:1px dashed color-mix(in srgb,var(--line) 70%,transparent); }
+.sweep-step:first-of-type { border-top:0; padding-top:4px; }
+.sweep-step .mission-actions { padding-top:10px; }
+.sweep-step .micro { display:block; margin-top:10px; text-transform:none; letter-spacing:.03em; line-height:1.6; }
+.sweep-drawer .tool-button.active { background:var(--sweep); border-color:var(--sweep); color:#1a1511; }
+.sweep-drawer .alt-control input { width:78px; }
+.sweep-drawer .upload-button { border-color:var(--sweep); color:var(--sweep); }
+.sweep-drawer .upload-button:not(:disabled):hover { background:var(--sweep); color:#1a1511; }
+.sweep-drawer .upload-button:disabled { opacity:.35; }
+
+.sweep-warn { margin:10px 0 0; padding:8px 10px; border-left:2px solid var(--amber); color:var(--amber); font-size:10px; line-height:1.6; }
+.sweep-warn[hidden] { display:none; }
+
+.sweep-fields { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-top:10px; }
+.sweep-field { display:flex; flex-direction:column; gap:6px; min-width:0; }
+.sweep-field > label { font-size:8px; letter-spacing:.12em; color:var(--muted); }
+.sweep-input { display:flex; align-items:center; gap:6px; color:var(--muted); font-size:10px; }
+.sweep-input input { width:100%; min-width:0; background:var(--bg); color:var(--text); border:1px solid var(--line); padding:8px 7px; }
+.sweep-field.missing .sweep-input input { border-color:var(--amber); }
+.sweep-field.override .sweep-input input { border-color:var(--sweep); }
+.sweep-source { align-self:flex-start; border:1px solid var(--line); background:transparent; color:var(--muted); padding:3px 6px; cursor:pointer; font-size:8px; letter-spacing:.09em; text-transform:uppercase; }
+.sweep-source:hover { color:var(--paper); border-color:var(--paper-2); }
+.sweep-field.missing .sweep-source { color:var(--amber); border-color:var(--amber); cursor:default; }
+.sweep-field.override .sweep-source { color:var(--sweep); border-color:var(--sweep); }
+.sweep-check { gap:7px; cursor:pointer; }
+.sweep-check input { accent-color:var(--sweep); }
+
+.sweep-calc { margin-top:14px; border:1px solid var(--line); background:var(--bg); }
+.sweep-calc:empty { display:none; }
+.sweep-calc .row { display:grid; grid-template-columns:150px minmax(0,1fr); gap:10px; padding:8px 12px; border-bottom:1px dashed color-mix(in srgb,var(--line) 60%,transparent); font-size:10px; line-height:1.5; }
+.sweep-calc .row:last-child { border-bottom:0; }
+.sweep-calc .row span { color:var(--muted); letter-spacing:.09em; text-transform:uppercase; }
+.sweep-calc .row strong { font-weight:500; color:var(--paper-2); overflow-wrap:anywhere; }
+.sweep-calc .verdict { font-size:12px; }
+.sweep-calc .verdict strong { font-weight:700; letter-spacing:.06em; }
+.sweep-calc .verdict.ok strong { color:var(--mint); }
+.sweep-calc .verdict.tight strong { color:var(--amber); }
+.sweep-calc .verdict.too_long strong { color:var(--danger); }
+.sweep-calc .advice { display:block; padding:9px 12px; font-size:10px; line-height:1.6; color:var(--danger); border-top:1px solid var(--line); }
+.sweep-calc .advice.tight { color:var(--amber); }
+.sweep-calc .pending { padding:10px 12px; color:var(--muted); font-size:10px; }
+.sweep-notes { margin:10px 0 0; padding:0; list-style:none; }
+.sweep-notes:empty { display:none; }
+.sweep-notes li { padding:6px 10px; margin-top:6px; border-left:2px solid var(--amber); color:var(--amber); font-size:10px; line-height:1.55; }
+
+.sweep-progress { margin-top:14px; }
+.sweep-progress[hidden] { display:none; }
+.sweep-bar { height:10px; border:1px solid var(--line); background:var(--bg); overflow:hidden; }
+.sweep-bar i { display:block; height:100%; width:0; background:var(--sweep); transition:width .35s linear; }
+.sweep-progress .home-position { margin:8px 0 0; color:var(--paper-2); }
+
+/* The map pieces. */
+.sweep-vertex { display:grid; place-items:center; width:22px; height:22px; background:var(--bg); border:2px solid var(--sweep); color:var(--sweep); font:800 10px/1 ui-monospace,monospace; cursor:grab; box-shadow:2px 2px 0 rgba(0,0,0,.3); }
+.sweep-vertex:active { cursor:grabbing; }
+.neco-marker-shell.chomp img { animation:sweep-chomp .2s steps(2) 2; }
+@keyframes sweep-chomp { 0% { transform:scale(1); } 50% { transform:scale(1.14) rotate(-4deg); } 100% { transform:scale(1); } }
+
+/* VT323 has smaller glyphs, so the CRT theme bumps the text sizes the same way the rest of the page does. */
+html[data-theme="dark"] .sweep-drawer > summary,
+html[data-theme="dark"] :is(.sweep-source,.sweep-field > label,.sweep-calc .row span) { font-size:13px; letter-spacing:.07em; }
+html[data-theme="dark"] :is(.sweep-warn,.sweep-notes li,.sweep-calc .row,.sweep-calc .advice,.sweep-calc .pending,.sweep-input,.sweep-step .micro) { font-size:15px; }
+html[data-theme="dark"] .sweep-calc .verdict { font-size:18px; }
+html[data-theme="dark"] .sweep-vertex { font-size:12px; box-shadow:0 0 8px rgba(255,74,61,.3); }
+html[data-theme="dark"] .sweep-title em { text-shadow:0 0 8px rgba(255,74,61,.35); }
+
+@media(max-width:1050px) { .sweep-fields { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:720px) {
+  .sweep-body { padding:12px 12px 16px; }
+  .sweep-calc .row { grid-template-columns:104px minmax(0,1fr); }
+  .sweep-drawer .upload-button { width:100%; margin-left:0; }
+  .sweep-badge { max-width:46%; }
+}
+@media(prefers-reduced-motion:reduce) { .neco-marker-shell.chomp img { animation:none; } .sweep-bar i { transition:none; } }

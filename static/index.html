@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://unpkg.com">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/sweep.css">
 </head>
 <body>
   <div class="noise" aria-hidden="true"></div>
@@ -70,6 +71,80 @@
           </div>
           <div id="map"></div>
           <div class="map-caption"><span>MAP FEED</span><span id="map-comment">waiting for coordinates to commit to reality</span></div>
+
+          <details id="sweep-drawer" class="sweep-drawer" hidden>
+            <summary><span class="sweep-title">SWEEP ▸ <em>roomba mode</em></span><span id="sweep-badge" class="tag sweep-badge">NO AREA</span></summary>
+            <div class="sweep-body">
+              <p class="hud-note">Draw an area, pick how wide the lanes are, and Neco mows it. Nothing is uploaded until you press LAUNCH SCOUT, and upload still does <strong>not</strong> arm the aircraft.</p>
+
+              <div class="sweep-step">
+                <span class="label">1 / DRAW THE AREA</span>
+                <div class="mission-actions">
+                  <button id="sweep-draw" class="tool-button" type="button">＋ DRAW AREA</button>
+                  <button id="sweep-undo" class="tool-button" type="button">UNDO CORNER</button>
+                  <button id="sweep-fit" class="tool-button" type="button">FIT AREA</button>
+                  <button id="sweep-clear" class="tool-button" type="button">CLEAR AREA</button>
+                </div>
+                <p id="sweep-hint" class="micro">click the map to drop corners ◈ drag a corner to move it ◈ right-click or double-click a corner to delete it</p>
+              </div>
+
+              <div class="sweep-step">
+                <span class="label">2 / LANES</span>
+                <div class="mission-actions">
+                  <label class="alt-control">LANE SPACING <input id="sweep-spacing" type="number" min="2" max="200" step="1" value="15"> m</label>
+                  <label class="alt-control">ANGLE <input id="sweep-angle" type="number" min="0" max="359" step="1" placeholder="auto"> °</label>
+                  <label class="alt-control">ALT <input id="sweep-alt" type="number" min="1" max="500" step="1" value="30"> m</label>
+                  <label class="alt-control">SPEED <input id="sweep-speed" type="number" min="0.5" max="20" step="0.5" value="5"> m/s</label>
+                </div>
+                <p id="sweep-lanes" class="home-position">no area yet ◈ draw at least 3 corners</p>
+                <p id="sweep-warn" class="sweep-warn" hidden></p>
+              </div>
+
+              <div class="sweep-step">
+                <span class="label">3 / PRE-FLIGHT ◈ WILL THE BATTERY DO IT?</span>
+                <div class="sweep-fields">
+                  <div class="sweep-field" data-field="capacity">
+                    <label for="sweep-capacity">BATTERY CAPACITY</label>
+                    <div class="sweep-input"><input id="sweep-capacity" type="number" min="100" max="100000" step="50" inputmode="decimal"><span>mAh</span></div>
+                    <button type="button" class="sweep-source" data-reset="capacity" title="Use the automatic value again">--</button>
+                  </div>
+                  <div class="sweep-field" data-field="remaining">
+                    <label for="sweep-remaining">CHARGE LEFT</label>
+                    <div class="sweep-input"><input id="sweep-remaining" type="number" min="0" max="100" step="1" inputmode="decimal"><span>%</span></div>
+                    <button type="button" class="sweep-source" data-reset="remaining" title="Use the automatic value again">--</button>
+                  </div>
+                  <div class="sweep-field" data-field="amps">
+                    <label for="sweep-amps">AVERAGE CURRENT</label>
+                    <div class="sweep-input"><input id="sweep-amps" type="number" min="0.5" max="500" step="0.5" inputmode="decimal"><span>A</span></div>
+                    <button type="button" class="sweep-source" data-reset="amps" title="Use the automatic value again">--</button>
+                  </div>
+                  <div class="sweep-field" data-field="reserve">
+                    <label for="sweep-reserve">KEEP IN RESERVE</label>
+                    <div class="sweep-input"><input id="sweep-reserve" type="number" min="0" max="90" step="1" inputmode="decimal"><span>%</span></div>
+                    <button type="button" class="sweep-source" data-reset="reserve" title="Use the default again">--</button>
+                  </div>
+                </div>
+                <div class="mission-actions">
+                  <button id="sweep-read" class="tool-button" type="button">READ VEHICLE</button>
+                  <label class="alt-control sweep-check"><input id="sweep-autortl" type="checkbox" checked> AUTO-RTL IF THE BATTERY CAN'T FINISH</label>
+                </div>
+                <div id="sweep-calc" class="sweep-calc" aria-live="polite"></div>
+                <ul id="sweep-notes" class="sweep-notes"></ul>
+                <p class="hud-note">GroundLink fills in what it can read. Type over any box to override it, and click its tag to go back to the automatic value. The estimate uses one average current for the whole flight, plus 2 s per turn, the climb and a 20 s landing, so use a measured current for the aircraft you are really flying. The autopilot's own <code>BATT_FS_*</code> failsafe is the real safety net; AUTO-RTL is a second line that only works while the radio link is up.</p>
+              </div>
+
+              <div class="mission-actions">
+                <span id="sweep-gate" class="micro"></span>
+                <button id="sweep-forget" class="tool-button" type="button" hidden>FORGET LOADED SWEEP</button>
+                <button id="sweep-upload" class="upload-button" type="button" disabled>LAUNCH SCOUT ◈ UPLOAD SWEEP</button>
+              </div>
+              <div id="sweep-progress" class="sweep-progress" hidden>
+                <div class="sweep-bar"><i id="sweep-bar-fill"></i></div>
+                <p id="sweep-progress-text" class="home-position"></p>
+              </div>
+              <div id="sweep-result" class="mission-result" aria-live="polite">sweep ready ◈ draw an area</div>
+            </div>
+          </details>
         </article>
 
         <article class="panel log-panel">
@@ -170,5 +245,6 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="/app.js"></script>
+  <script src="/sweep.js"></script>
 </body>
 </html>

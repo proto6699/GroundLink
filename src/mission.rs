@@ -124,6 +124,8 @@ pub async fn upload_handler(
     };
     match result {
         Ok(message) => {
+            // The vehicle holds one mission at a time: this replaces any sweep GroundLink was watching.
+            crate::sweep::clear(&state).await;
             *state.mission.write().await = Some(plan.clone());
             let _ = state.tx.send(ServerMessage::Mission { plan: plan.clone() });
             (
@@ -382,6 +384,27 @@ async fn upload_to_vehicle(state: &AppState, plan: &MissionPlan) -> Result<Strin
 }
 
 async fn transfer_mission(state: &AppState, plan: &MissionPlan) -> Result<String, String> {
+    transfer_with(
+        state,
+        |system, component| mission_items(plan, system, component),
+        format!(
+            "ArduPilot accepted flight plan at {} m/s; arm and select AUTO to fly",
+            plan.settings.speed_m_s
+        ),
+    )
+    .await
+}
+
+/// Run the MAVLink mission upload protocol for whatever items `build` produces for the vehicle's
+/// system and component ids. Shared by waypoint missions and Sweep.
+pub(crate) async fn transfer_with<F>(
+    state: &AppState,
+    build: F,
+    success: String,
+) -> Result<String, String>
+where
+    F: FnOnce(u8, u8) -> Vec<MISSION_ITEM_INT_DATA>,
+{
     let connection = state
         .mavlink_connection
         .read()
@@ -393,7 +416,7 @@ async fn transfer_mission(state: &AppState, plan: &MissionPlan) -> Result<String
         .read()
         .await
         .ok_or("waiting for vehicle heartbeat")?;
-    let items = mission_items(plan, target_system, target_component);
+    let items = build(target_system, target_component);
     let mut sent = vec![false; items.len()];
     let mut events = state.mission_events.subscribe();
     connection
@@ -409,7 +432,9 @@ async fn transfer_mission(state: &AppState, plan: &MissionPlan) -> Result<String
         )
         .await
         .map_err(|e| format!("failed to announce mission: {e}"))?;
-    let deadline = Instant::now() + MISSION_TIMEOUT;
+    // The timeout restarts every time the vehicle asks for an item, so a long mission over a slow
+    // radio is fine as long as it keeps making progress; a stalled upload still fails.
+    let mut deadline = Instant::now() + MISSION_TIMEOUT;
     loop {
         let event = match timeout(
             deadline.saturating_duration_since(Instant::now()),
@@ -433,6 +458,7 @@ async fn transfer_mission(state: &AppState, plan: &MissionPlan) -> Result<String
                     .await
                     .map_err(|e| format!("failed to send mission item {seq}: {e}"))?;
                 sent[seq as usize] = true;
+                deadline = Instant::now() + MISSION_TIMEOUT;
             }
             MissionEvent::Ack(result) => {
                 if result != MavMissionResult::MAV_MISSION_ACCEPTED {
@@ -443,10 +469,7 @@ async fn transfer_mission(state: &AppState, plan: &MissionPlan) -> Result<String
                         "vehicle acknowledged before requesting the complete mission".into(),
                     );
                 }
-                return Ok(format!(
-                    "ArduPilot accepted flight plan at {} m/s; arm and select AUTO to fly",
-                    plan.settings.speed_m_s
-                ));
+                return Ok(success);
             }
             _ => {}
         }

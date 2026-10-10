@@ -3,6 +3,7 @@ mod errors;
 mod mavlink_listener;
 mod mission;
 mod state;
+mod sweep;
 mod telemetry;
 mod ws;
 
@@ -47,12 +48,19 @@ async fn main() {
         tokio::spawn(mavlink_listener::run(state.clone()));
     }
 
+    if state.sweep_enabled {
+        tokio::spawn(sweep::monitor::run(state.clone()));
+    } else {
+        info!("Sweep is switched off (GROUNDLINK_SWEEP)");
+    }
+
     let static_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("static");
 
     let app = Router::new()
         .route("/health", get(health))
         .route("/luck", post(try_luck))
         .route("/api/mission", post(mission::upload_handler))
+        .merge(sweep::routes(state.sweep_enabled))
         .route("/ws", get(ws::ws_handler))
         .fallback_service(ServeDir::new(static_dir).append_index_html_on_directories(true))
         .layer(TraceLayer::new_for_http())

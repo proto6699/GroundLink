@@ -300,6 +300,7 @@ function connectWebSocket() {
       } else if (message.type === 'telemetry') renderTelemetry(message.data);
       else if (message.type === 'mission') renderUploadedPlan(message.plan);
       else if (message.type === 'home') renderHome(message.home);
+      else if (message.type.startsWith('sweep')) window.sweepOnMessage?.(message);
     } catch (error) { console.error(error); logEvent('frame parse error ◈ JSON committed a crime','danger'); }
   });
   ws.addEventListener('close', () => { setLinkStatus(false,currentSource); logEvent('websocket disconnected; retrying because giving up is cringe','warning'); clearTimeout(reconnectTimer); reconnectTimer=setTimeout(connectWebSocket,1500); });
