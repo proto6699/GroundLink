@@ -16,23 +16,19 @@ Crashing imaginary drones is considerably cheaper.
 <h2>Demo</h2>
 
 <p align="center">
-  <img
-    src="https://github.com/user-attachments/assets/e9f65c13-336f-4e1d-99ff-ba67f7f975a2"
-    width="850"
-    alt="GroundLink application demo"
-  />
+  <img src="docs/screenshots/overview.png" width="850" alt="GroundLink overview: telemetry tiles, map and flight log" />
 </p>
 
 <p align="center">
-  <img
-    src="https://github.com/user-attachments/assets/cfdeb6f5-07dd-495d-ab00-6f39341a5b56"
-    width="850"
-    alt="GroundLink waypoint demo"
-  />
+  <img src="docs/screenshots/sweep-map.png" width="850" alt="Sweep mid-flight: red lanes being eaten by Neco, with the battery-triggered RTL in the log" />
 </p>
 
 <p align="center">
-  <i>GroundLink running in native demo mode — no drone was harmed in the making of these screenshots.</i>
+  <img src="docs/screenshots/horizon-mission.png" width="850" alt="Artificial horizon, waypoint mission and home orbit panels" />
+</p>
+
+<p align="center">
+  <i>GroundLink running in native demo mode (simulated vehicle and battery). The middle shot is a Sweep run where the demo pack ran low, so it turned home after 3 of 8 lanes. No drone was harmed in the making of these screenshots.</i>
 </p>
 
 ## What does it do?
@@ -156,7 +152,7 @@ Dark mode now uses Neco's green phosphor palette and bundled VT323 font, scanlin
 
 ## Sweep (roomba mode)
 
-Tucked into a folded drawer under the map, so it stays out of the way until you want it. Click **draw**, drop points around the area like waypoints, pick a lane width, and GroundLink lays out back-and-forth lanes (red, and Neco eats them as the drone flies them).
+Part of the main app now, but tucked into a folded drawer under the map so it stays out of the way until you open it. Click **draw**, drop points around the area like waypoints, pick a lane width, and GroundLink lays out back-and-forth lanes (red, and Neco eats them as the drone flies them).
 
 Before launch it asks for battery capacity, remaining percent, average current and a reserve, fills in what it can read (the vehicle's `BATT_CAPACITY` over MAVLink, the demo's simulated pack), and does the maths. Every field can be overridden by hand. The log says `roomba time` when you launch.
 
